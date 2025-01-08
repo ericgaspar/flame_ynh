@@ -7,10 +7,15 @@ source /usr/share/yunohost/helpers
 # INITIALIZE AND STORE SETTINGS
 #=================================================
 
-# If you need to, you can define custom settings
-# (or remove this section entirely if not relevant for you)
-foo="bar"
-ynh_app_setting_set --key=foo --value=$foo
+key=$(ynh_string_random --length=64)
+ynh_app_setting_set --key=key --value=$key
+
+#=================================================
+# INSTALL DEPENDENCIES
+#=================================================
+ynh_script_progression "Installing dependencies..."
+
+ynh_nodejs_install
 
 #=================================================
 # DOWNLOAD, CHECK AND UNPACK SOURCE
@@ -35,7 +40,25 @@ ynh_config_add_nginx
 
 ynh_config_add_systemd
 
-yunohost service add "$app" --description="A short description of the app" --log="/var/log/$app/$app.log"
+yunohost service add "$app" --description="Startpage for your server" --log="/var/log/$app/$app.log"
+
+#=================================================
+# INSTALL APP
+#=================================================
+ynh_script_progression "Installing the app..."
+
+pushd "$install_dir"
+ 	ynh_hide_warnings ynh_exec_as_app npm run dev-init
+popd
+
+pushd "$install_dir/client"
+ 	ynh_hide_warnings ynh_exec_as_app npm run build
+popd
+
+mkdir -p "$install_dir/{data,public}"
+mv $install_dir/client/build/* $install_dir/public
+chmod -R o-rwx "$install_dir/"
+chown -R $app: "$install_dir/"
 
 #=================================================
 # START SYSTEMD SERVICE
